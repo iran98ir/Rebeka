@@ -1,0 +1,35 @@
+name: Build Suppersun GUI
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - "cmd/gui/**"
+      - "go.mod"
+      - "go.sum"
+      - ".github/workflows/gui-build.yml"
+
+jobs:
+  build-gui:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build GUI
+        env:
+          CGO_ENABLED: 1
+        run: go build -v -o suppersun.exe -trimpath -ldflags "-s -w" ./cmd/gui
+
+      - name: Upload EXE
+        uses: actions/upload-artifact@v4
+        with:
+          name: suppersun-windows-amd64
+          path: suppersun.exe
