@@ -29,13 +29,13 @@ const (
 )
 
 type UI struct {
-	state       appState
-	mu          sync.Mutex
-	circle      *canvas.Circle
-	statusText  *canvas.Text
-	hintText    *canvas.Text
-	mainWindow  fyne.Window
-	coreConfig  *config.Config
+	state      appState
+	mu         sync.Mutex
+	circle     *canvas.Circle
+	statusText *canvas.Text
+	hintText   *canvas.Text
+	mainWindow fyne.Window
+	coreConfig *config.Config
 }
 
 func main() {
@@ -56,7 +56,7 @@ func main() {
 	ui.circle.Resize(fyne.NewSize(200, 200))
 	circleWrap := container.NewGridWrap(fyne.NewSize(220, 220), ui.circle)
 
-	// متن وضعیت با canvas.Text (سایز دلخواه)
+	// متن وضعیت
 	ui.statusText = canvas.NewText("خاموش", colFg)
 	ui.statusText.TextSize = 24
 	ui.statusText.TextStyle = fyne.TextStyle{Bold: true}
@@ -70,11 +70,11 @@ func main() {
 	// دکمه‌ی نامرئی روی دایره
 	tapBtn := widget.NewButton("", func() { ui.toggle() })
 	tapBtn.Importance = widget.LowImportance
-	tapStack := container.New(layout.NewStackLayout(), circleWrap, container.NewGridWrap(fyne.NewSize(220, 220), tapBtn))
+	tapStack := container.NewMax(circleWrap, container.NewGridWrap(fyne.NewSize(220, 220), tapBtn))
 
 	title := widget.NewRichText(&widget.TextSegment{
 		Style: widget.RichTextStyle{
-			SizeName: theme.SizeNameHeadingText,
+			SizeName:  theme.SizeNameHeadingText,
 			Alignment: fyne.TextAlignCenter,
 			TextStyle: fyne.TextStyle{Bold: true},
 		},
