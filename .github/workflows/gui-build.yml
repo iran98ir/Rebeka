@@ -1,4 +1,4 @@
-name: Build Suppersun APK
+name: Build azitavpn APK
 
 on:
   workflow_dispatch:
@@ -37,13 +37,13 @@ jobs:
         run: |
           cd cmd/gui
           fyne package -os android \
-            --appID com.suppersun.app \
-            --name Suppersun \
+            --appID com.azitavpn.app \
+            --name azitavpn \
             --icon ${{ github.workspace }}/icon.png
-          mv Suppersun.apk ${{ github.workspace }}/Suppersun.apk
+          mv azitavpn.apk ${{ github.workspace }}/azitavpn.apk
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: suppersun-android
-          path: Suppersun.apk
+          name: azitavpn-android
+          path: azitavpn.apk
