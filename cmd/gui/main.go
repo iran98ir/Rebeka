@@ -3,193 +3,176 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"io"
+	"os"
+	"path/filepath"
+	"sync"
 
 	"github.com/bepass-org/bepass/config"
 	"github.com/bepass-org/bepass/server"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
+	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/storage"
 	"fyne.io/fyne/v2/widget"
 )
 
+type appState int
+
+const (
+	stateOff appState = iota
+	stateConnecting
+	stateOn
+)
+
+type UI struct {
+	state        appState
+	mu           sync.Mutex
+	circle       *canvas.Circle
+	statusLabel  *widget.Label
+	hintLabel    *widget.Label
+	mainWindow   fyne.Window
+	coreConfig   *config.Config
+}
+
 func main() {
 	myApp := app.New()
-	myApp.Settings().SetTheme(sunTheme{})
+	myApp.Settings().SetTheme(aziTheme{})
 
 	if icon := loadIconFromConfigDir(); icon != nil {
 		myApp.SetIcon(icon)
 	}
 
-	myWindow := myApp.NewWindow("Suppersun")
-	myWindow.Resize(fyne.NewSize(500, 520))
+	myWindow := myApp.NewWindow("azitavpn")
+	myWindow.Resize(fyne.NewSize(420, 560))
 
-	ui := createUIComponents(&myWindow)
+	ui := &UI{mainWindow: myWindow}
 
-	title := widget.NewLabelWithStyle("☀  Suppersun", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	// دایره وضعیت
+	ui.circle = canvas.NewCircle(colGray)
+	ui.circle.Resize(fyne.NewSize(200, 200))
+	circleWrap := container.NewGridWrap(fyne.NewSize(220, 220), ui.circle)
+
+	// لیبل وضعیت
+	ui.statusLabel = widget.NewLabelWithStyle("خاموش", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	ui.statusLabel.TextSize = 22
+
+	// راهنما
+	ui.hintLabel = widget.NewLabelWithStyle("برای اتصال، روی خورشید بزن", fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
+
+	// دکمه‌ی نامرئی روی دایره
+	tapBtn := widget.NewButton("", func() { ui.toggle() })
+	tapBtn.Importance = widget.LowImportance
+	tapStack := container.NewStack(circleWrap, container.NewGridWrap(fyne.NewSize(220, 220), tapBtn))
+
+	title := widget.NewLabelWithStyle("azitavpn", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	title.TextSize = 28
 
 	content := container.NewVBox(
+		layout.NewSpacer(),
 		title,
 		widget.NewSeparator(),
-		ui.profile,
-		ui.dohLabel,
-		ui.dohInput,
-		ui.listenLabel,
-		ui.listenInput,
-		ui.openFileLabel,
-		ui.openFileButton,
 		layout.NewSpacer(),
-		ui.connectButton,
+		tapStack,
+		layout.NewSpacer(),
+		ui.statusLabel,
+		ui.hintLabel,
+		layout.NewSpacer(),
 	)
 
-	myWindow.SetContent(content)
+	myWindow.SetContent(container.NewPadded(content))
 	myWindow.ShowAndRun()
 }
 
-type UIComponents struct {
-	profile        *widget.RadioGroup
-	dohLabel       *widget.Label
-	dohInput       *widget.Entry
-	listenLabel    *widget.Label
-	listenInput    *widget.Entry
-	openFileLabel  *widget.Label
-	openFileButton *widget.Button
-	connectButton  *widget.Button
-	isConnected    bool
-	coreConfig     *config.Config
-}
+func (ui *UI) toggle() {
+	ui.mu.Lock()
+	defer ui.mu.Unlock()
 
-func createUIComponents(myWindow *fyne.Window) *UIComponents {
-	ui := &UIComponents{}
-	ui.dohInput = widget.NewEntry()
-	ui.dohInput.SetText("https://yarp.lefolgoc.net/dns-query")
-	ui.listenInput = widget.NewEntry()
-	ui.listenInput.SetText("0.0.0.0:8085")
-
-	ui.connectButton = widget.NewButton("Connect", func() {
-		ui.ToggleConnection(myWindow)
-	})
-	ui.connectButton.Enable()
-
-	ui.dohLabel = widget.NewLabel("DOH Address:")
-	ui.listenLabel = widget.NewLabel("Socks Address to listen on:")
-	ui.openFileLabel = widget.NewLabel("Config:")
-
-	ui.openFileButton = widget.NewButton("Select", func() {
-		fd := dialog.NewFileOpen(func(reader fyne.URIReadCloser, err error) {
-			if err != nil {
-				dialog.ShowError(err, *myWindow)
-				return
-			}
-			if reader == nil {
-				return
-			}
-			data, err := io.ReadAll(reader)
-			if err != nil {
-				dialog.ShowError(err, *myWindow)
-				return
-			}
-			err = json.Unmarshal(data, &ui.coreConfig)
-			if err != nil {
-				dialog.ShowError(err, *myWindow)
-				return
-			}
-			ui.openFileLabel.SetText(fmt.Sprintf("config: %s", reader.URI().String()))
-		}, *myWindow)
-		cwd, _ := storage.ListerForURI(storage.NewFileURI("."))
-		fd.SetLocation(cwd)
-		fd.SetFilter(storage.NewExtensionFileFilter([]string{".json"}))
-		fd.Show()
-	})
-
-	ui.profile = widget.NewRadioGroup([]string{"Default", "Config"}, func(value string) {
-		if value == "Default" {
-			ui.openFileLabel.Hide()
-			ui.openFileButton.Hide()
-			ui.dohLabel.Show()
-			ui.dohInput.Show()
-			ui.listenLabel.Show()
-			ui.listenInput.Show()
-		} else {
-			ui.dohLabel.Hide()
-			ui.dohInput.Hide()
-			ui.listenLabel.Hide()
-			ui.listenInput.Hide()
-			ui.openFileLabel.Show()
-			ui.openFileButton.Show()
-			ui.coreConfig = nil
-		}
-	})
-	ui.profile.SetSelected("Default")
-
-	ui.isConnected = false
-	return ui
-}
-
-func (ui *UIComponents) ToggleConnection(myWindow *fyne.Window) {
-	if ui.isConnected {
-		ui.Disconnect(myWindow)
-	} else {
-		ui.Connect(myWindow)
+	switch ui.state {
+	case stateOff:
+		ui.setState(stateConnecting)
+		go ui.connect()
+	case stateOn:
+		ui.setState(stateOff)
+		go ui.disconnect()
 	}
 }
 
-func (ui *UIComponents) Connect(myWindow *fyne.Window) {
-	if ui.profile.Selected == "Default" {
-		ui.coreConfig = &config.Config{
-			TLSHeaderLength:       5,
-			DnsCacheTTL:           3600,
-			WorkerAddress:         "worker.example.com",
-			WorkerIPPortAddress:   "192.168.0.1:8080",
-			WorkerEnabled:         true,
-			WorkerDNSOnly:         false,
-			RemoteDNSAddr:         ui.dohInput.Text,
-			BindAddress:           ui.listenInput.Text,
-			ChunksLengthBeforeSni: [2]int{10, 20},
-			SniChunksLength:       [2]int{30, 40},
-			ChunksLengthAfterSni:  [2]int{50, 60},
-			DelayBetweenChunks:    [2]int{70, 80},
-			ResolveSystem:         "doh",
+func (ui *UI) setState(s appState) {
+	ui.state = s
+	switch s {
+	case stateOff:
+		ui.circle.FillColor = colGray
+		ui.statusLabel.SetText("خاموش")
+		ui.hintLabel.SetText("برای اتصال، روی خورشید بزن")
+	case stateConnecting:
+		ui.circle.FillColor = colYellow
+		ui.statusLabel.SetText("در حال اتصال...")
+		ui.hintLabel.SetText("لطفاً صبر کن")
+	case stateOn:
+		ui.circle.FillColor = colGreen
+		ui.statusLabel.SetText("متصل ✓")
+		ui.hintLabel.SetText("برای قطع، دوباره بزن")
+	}
+	ui.circle.Refresh()
+}
+
+func (ui *UI) connect() {
+	// خواندن config.json از کنار فایل اجرایی یا دایرکتوری جاری
+	cfgPath := ""
+	if exe, err := os.Executable(); err == nil {
+		p := filepath.Join(filepath.Dir(exe), "config.json")
+		if _, err := os.Stat(p); err == nil {
+			cfgPath = p
 		}
 	}
-
-	if ui.coreConfig == nil {
-		dialog.ShowError(fmt.Errorf("config isn't selected"), *myWindow)
+	if cfgPath == "" {
+		if cwd, err := os.Getwd(); err == nil {
+			p := filepath.Join(cwd, "config.json")
+			if _, err := os.Stat(p); err == nil {
+				cfgPath = p
+			}
+		}
+	}
+	if cfgPath == "" {
+		ui.showError(fmt.Errorf("config.json پیدا نشد"))
+		ui.setState(stateOff)
 		return
 	}
 
-	go func() {
-		err := server.Run(true)
-		if err != nil {
-			dialog.ShowError(err, *myWindow)
-			ui.isConnected = false
-			ui.dohInput.Enable()
-			ui.listenInput.Enable()
-			ui.connectButton.SetText("Connect")
-		}
-	}()
+	data, err := os.ReadFile(cfgPath)
+	if err != nil {
+		ui.showError(err)
+		ui.setState(stateOff)
+		return
+	}
 
-	ui.isConnected = true
-	ui.dohInput.Disable()
-	ui.listenInput.Disable()
-	ui.connectButton.SetText("Disconnect")
+	cfg := &config.Config{}
+	if err := json.Unmarshal(data, cfg); err != nil {
+		ui.showError(fmt.Errorf("config.json معتبر نیست: %v", err))
+		ui.setState(stateOff)
+		return
+	}
+	ui.coreConfig = cfg
+
+	if err := server.Run(true); err != nil {
+		ui.showError(err)
+		ui.setState(stateOff)
+		return
+	}
+
+	ui.setState(stateOn)
 }
 
-func (ui *UIComponents) Disconnect(myWindow *fyne.Window) {
-	go func() {
-		if ui.coreConfig != nil {
-			err := server.ShutDown()
-			if err != nil {
-				dialog.ShowError(err, *myWindow)
-			}
-		}
-	}()
-	ui.isConnected = false
-	ui.dohInput.Enable()
-	ui.listenInput.Enable()
-	ui.connectButton.SetText("Connect")
+func (ui *UI) disconnect() {
+	if err := server.ShutDown(); err != nil {
+		ui.showError(err)
+	}
+	ui.setState(stateOff)
+}
+
+func (ui *UI) showError(err error) {
+	dialog.ShowError(err, ui.mainWindow)
 }
