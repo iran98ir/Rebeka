@@ -7,70 +7,70 @@ import (
 	"fyne.io/fyne/v2/theme"
 )
 
-// پالت رنگی Suppersun
+// پالت رنگی azitavpn — دخترونه، شاد، لوکس
 var (
-	colSunYellow = color.NRGBA{R: 0xFF, G: 0xD4, B: 0x47, A: 0xFF} // زرد خورشیدی
-	colSunDeep   = color.NRGBA{R: 0xE8, G: 0x8B, B: 0x1A, A: 0xFF} // نارنجی طلایی
-	colCream     = color.NRGBA{R: 0xF3, G: 0xE6, B: 0xC4, A: 0xFF} // کرم
-	colTurquoise = color.NRGBA{R: 0x3F, G: 0xD0, B: 0xC9, A: 0xFF} // فیروزه‌ای روشن
-	colTurqDeep  = color.NRGBA{R: 0x0E, G: 0x3B, B: 0x3A, A: 0xFF} // فیروزه‌ای تیره
-	colBg        = color.NRGBA{R: 0x07, G: 0x24, B: 0x23, A: 0xFF} // پس‌زمینه
-	colFg        = color.NRGBA{R: 0xFF, G: 0xF6, B: 0xC9, A: 0xFF} // متن
-	colHover     = color.NRGBA{R: 0x1A, G: 0x5A, B: 0x57, A: 0xFF}
-	colFocus     = color.NRGBA{R: 0xFF, G: 0xD4, B: 0x47, A: 0xFF}
-	colDisabled  = color.NRGBA{R: 0x66, G: 0x66, B: 0x66, A: 0xFF}
+	colPinkSoft   = color.NRGBA{R: 0xFF, G: 0xC2, B: 0xD9, A: 0xFF} // صورتی پاستلی
+	colPinkDeep   = color.NRGBA{R: 0xFF, G: 0x6F, B: 0xA8, A: 0xFF} // صورتی پررنگ
+	colYellow     = color.NRGBA{R: 0xFF, G: 0xE0, B: 0x6B, A: 0xFF} // زرد خورشیدی
+	colTurquoise  = color.NRGBA{R: 0x6F, G: 0xE7, B: 0xD8, A: 0xFF} // فیروزه‌ای روشن
+	colCream      = color.NRGBA{R: 0xFF, G: 0xF5, B: 0xE6, A: 0xFF} // کرم
+	colBg         = color.NRGBA{R: 0xFF, G: 0xF7, B: 0xFA, A: 0xFF} // پس‌زمینه صورتی خیلی روشن
+	colFg         = color.NRGBA{R: 0x6B, G: 0x2C, B: 0x4C, A: 0xFF} // متن شرابی تیره
+	colGray       = color.NRGBA{R: 0xC8, G: 0xBF, B: 0xC8, A: 0xFF} // خاکستری خاموش
+	colGreen      = color.NRGBA{R: 0x4C, G: 0xD9, B: 0x9C, A: 0xFF} // سبز متصل
+	colDisabled   = color.NRGBA{R: 0xB0, G: 0xA0, B: 0xB0, A: 0xFF}
 )
 
-type sunTheme struct{}
+type aziTheme struct{}
 
-func (sunTheme) Color(n fyne.ThemeColorName, v fyne.ThemeVariant) color.Color {
+func (aziTheme) Color(n fyne.ThemeColorName, v fyne.ThemeVariant) color.Color {
 	switch n {
 	case theme.ColorNameBackground:
 		return colBg
 	case theme.ColorNameButton:
-		return colSunDeep
+		return colPinkDeep
 	case theme.ColorNamePrimary:
-		return colSunYellow
+		return colPinkSoft
 	case theme.ColorNameForeground:
 		return colFg
 	case theme.ColorNameHover:
-		return colHover
+		return colPinkSoft
 	case theme.ColorNameFocus:
-		return colFocus
+		return colYellow
 	case theme.ColorNameDisabled:
 		return colDisabled
 	case theme.ColorNameInputBackground:
-		return colTurqDeep
-	case theme.ColorNameInputBorder:
-		return colTurquoise
-	case theme.ColorNamePlaceHolder:
 		return colCream
+	case theme.ColorNameInputBorder:
+		return colPinkSoft
+	case theme.ColorNamePlaceHolder:
+		return colGray
 	case theme.ColorNameSelection:
 		return colTurquoise
 	case theme.ColorNameSeparator:
-		return colTurqDeep
+		return colPinkSoft
 	case theme.ColorNameOverlayBackground:
-		return colTurqDeep
+		return colCream
 	case theme.ColorNameShadow:
-		return color.NRGBA{R: 0x00, G: 0x00, B: 0x00, A: 0x99}
+		return color.NRGBA{R: 0x6B, G: 0x2C, B: 0x4C, A: 0x33}
 	}
 	return theme.DefaultTheme().Color(n, v)
 }
 
-func (sunTheme) Font(s fyne.TextStyle) fyne.Resource {
+func (aziTheme) Font(s fyne.TextStyle) fyne.Resource {
 	return theme.DefaultTheme().Font(s)
 }
 
-func (sunTheme) Icon(n fyne.ThemeIconName) fyne.Resource {
+func (aziTheme) Icon(n fyne.ThemeIconName) fyne.Resource {
 	return theme.DefaultTheme().Icon(n)
 }
 
-func (sunTheme) Size(n fyne.ThemeSizeName) float32 {
+func (aziTheme) Size(n fyne.ThemeSizeName) float32 {
 	switch n {
 	case theme.SizeNamePadding:
-		return 6
+		return 8
 	case theme.SizeNameText:
-		return 14
+		return 15
 	}
 	return theme.DefaultTheme().Size(n)
 }
