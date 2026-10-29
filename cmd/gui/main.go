@@ -12,28 +12,17 @@ import (
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
-	"fyne.io/fyne/v2/canvas"
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
-	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
-type appState int
-
-const (
-	stateOff appState = iota
-	stateConnecting
-	stateOn
-)
-
 type UI struct {
-	state      appState
 	mu         sync.Mutex
-	circle     *canvas.Circle
-	statusText *canvas.Text
-	hintText   *canvas.Text
+	connected  bool
+	btn        *widget.Button
+	status     *widget.Label
 	mainWindow fyne.Window
 	coreConfig *config.Config
 }
@@ -47,49 +36,23 @@ func main() {
 	}
 
 	myWindow := myApp.NewWindow("azitavpn")
-	myWindow.Resize(fyne.NewSize(420, 560))
+	myWindow.Resize(fyne.NewSize(400, 480))
 
 	ui := &UI{mainWindow: myWindow}
 
-	// دایره وضعیت
-	ui.circle = canvas.NewCircle(colGray)
-	ui.circle.Resize(fyne.NewSize(200, 200))
-	circleWrap := container.NewGridWrap(fyne.NewSize(220, 220), ui.circle)
+	ui.status = widget.NewLabelWithStyle("خاموش", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+	ui.btn = widget.NewButton("اتصال", func() { ui.toggle() })
 
-	// متن وضعیت
-	ui.statusText = canvas.NewText("خاموش", colFg)
-	ui.statusText.TextSize = 24
-	ui.statusText.TextStyle = fyne.TextStyle{Bold: true}
-	ui.statusText.Alignment = fyne.TextAlignCenter
-
-	// راهنما
-	ui.hintText = canvas.NewText("برای اتصال، روی دایره بزن", colGray)
-	ui.hintText.TextSize = 14
-	ui.hintText.Alignment = fyne.TextAlignCenter
-
-	// دکمه‌ی نامرئی روی دایره
-	tapBtn := widget.NewButton("", func() { ui.toggle() })
-	tapBtn.Importance = widget.LowImportance
-	tapStack := container.NewMax(circleWrap, container.NewGridWrap(fyne.NewSize(220, 220), tapBtn))
-
-	title := widget.NewRichText(&widget.TextSegment{
-		Style: widget.RichTextStyle{
-			SizeName:  theme.SizeNameHeadingText,
-			Alignment: fyne.TextAlignCenter,
-			TextStyle: fyne.TextStyle{Bold: true},
-		},
-		Text: "azitavpn",
-	})
+	title := widget.NewLabelWithStyle("azitavpn", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
 
 	content := container.NewVBox(
 		layout.NewSpacer(),
 		title,
 		widget.NewSeparator(),
 		layout.NewSpacer(),
-		container.NewCenter(tapStack),
+		container.NewCenter(ui.status),
 		layout.NewSpacer(),
-		container.NewCenter(ui.statusText),
-		container.NewCenter(ui.hintText),
+		ui.btn,
 		layout.NewSpacer(),
 	)
 
@@ -99,43 +62,23 @@ func main() {
 
 func (ui *UI) toggle() {
 	ui.mu.Lock()
-	defer ui.mu.Unlock()
-
-	switch ui.state {
-	case stateOff:
-		ui.setState(stateConnecting)
-		go ui.connect()
-	case stateOn:
-		ui.setState(stateOff)
+	if ui.connected {
+		ui.mu.Unlock()
 		go ui.disconnect()
+	} else {
+		ui.mu.Unlock()
+		go ui.connect()
 	}
 }
 
-func (ui *UI) setState(s appState) {
-	ui.state = s
-	switch s {
-	case stateOff:
-		ui.circle.FillColor = colGray
-		ui.statusText.Text = "خاموش"
-		ui.statusText.Color = colFg
-		ui.hintText.Text = "برای اتصال، روی دایره بزن"
-	case stateConnecting:
-		ui.circle.FillColor = colYellow
-		ui.statusText.Text = "در حال اتصال..."
-		ui.statusText.Color = colFg
-		ui.hintText.Text = "لطفاً صبر کن"
-	case stateOn:
-		ui.circle.FillColor = colGreen
-		ui.statusText.Text = "متصل ✓"
-		ui.statusText.Color = colGreen
-		ui.hintText.Text = "برای قطع، دوباره بزن"
-	}
-	ui.circle.Refresh()
-	ui.statusText.Refresh()
-	ui.hintText.Refresh()
+func (ui *UI) setStatus(text string) {
+	ui.status.SetText(text)
 }
 
 func (ui *UI) connect() {
+	ui.btn.Disable()
+	ui.setStatus("در حال اتصال...")
+
 	cfgPath := ""
 	if exe, err := os.Executable(); err == nil {
 		p := filepath.Join(filepath.Dir(exe), "config.json")
@@ -152,42 +95,56 @@ func (ui *UI) connect() {
 		}
 	}
 	if cfgPath == "" {
-		ui.showError(fmt.Errorf("config.json پیدا نشد"))
-		ui.setState(stateOff)
+		dialog.ShowError(fmt.Errorf("config.json پیدا نشد"), ui.mainWindow)
+		ui.setStatus("خاموش")
+		ui.btn.Enable()
 		return
 	}
 
 	data, err := os.ReadFile(cfgPath)
 	if err != nil {
-		ui.showError(err)
-		ui.setState(stateOff)
+		dialog.ShowError(err, ui.mainWindow)
+		ui.setStatus("خاموش")
+		ui.btn.Enable()
 		return
 	}
 
 	cfg := &config.Config{}
 	if err := json.Unmarshal(data, cfg); err != nil {
-		ui.showError(fmt.Errorf("config.json معتبر نیست: %v", err))
-		ui.setState(stateOff)
+		dialog.ShowError(fmt.Errorf("config.json معتبر نیست: %v", err), ui.mainWindow)
+		ui.setStatus("خاموش")
+		ui.btn.Enable()
 		return
 	}
 	ui.coreConfig = cfg
 
 	if err := server.Run(true); err != nil {
-		ui.showError(err)
-		ui.setState(stateOff)
+		dialog.ShowError(err, ui.mainWindow)
+		ui.setStatus("خاموش")
+		ui.btn.Enable()
 		return
 	}
 
-	ui.setState(stateOn)
+	ui.mu.Lock()
+	ui.connected = true
+	ui.mu.Unlock()
+	ui.setStatus("متصل ✓")
+	ui.btn.SetText("قطع اتصال")
+	ui.btn.Enable()
 }
 
 func (ui *UI) disconnect() {
-	if err := server.ShutDown(); err != nil {
-		ui.showError(err)
-	}
-	ui.setState(stateOff)
-}
+	ui.btn.Disable()
+	ui.setStatus("در حال قطع...")
 
-func (ui *UI) showError(err error) {
-	dialog.ShowError(err, ui.mainWindow)
+	if err := server.ShutDown(); err != nil {
+		dialog.ShowError(err, ui.mainWindow)
+	}
+
+	ui.mu.Lock()
+	ui.connected = false
+	ui.mu.Unlock()
+	ui.setStatus("خاموش")
+	ui.btn.SetText("اتصال")
+	ui.btn.Enable()
 }
