@@ -16,6 +16,7 @@ import (
 	"fyne.io/fyne/v2/container"
 	"fyne.io/fyne/v2/dialog"
 	"fyne.io/fyne/v2/layout"
+	"fyne.io/fyne/v2/theme"
 	"fyne.io/fyne/v2/widget"
 )
 
@@ -28,13 +29,13 @@ const (
 )
 
 type UI struct {
-	state        appState
-	mu           sync.Mutex
-	circle       *canvas.Circle
-	statusLabel  *widget.Label
-	hintLabel    *widget.Label
-	mainWindow   fyne.Window
-	coreConfig   *config.Config
+	state       appState
+	mu          sync.Mutex
+	circle      *canvas.Circle
+	statusText  *canvas.Text
+	hintText    *canvas.Text
+	mainWindow  fyne.Window
+	coreConfig  *config.Config
 }
 
 func main() {
@@ -55,30 +56,40 @@ func main() {
 	ui.circle.Resize(fyne.NewSize(200, 200))
 	circleWrap := container.NewGridWrap(fyne.NewSize(220, 220), ui.circle)
 
-	// لیبل وضعیت
-	ui.statusLabel = widget.NewLabelWithStyle("خاموش", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	ui.statusLabel.TextSize = 22
+	// متن وضعیت با canvas.Text (سایز دلخواه)
+	ui.statusText = canvas.NewText("خاموش", colFg)
+	ui.statusText.TextSize = 24
+	ui.statusText.TextStyle = fyne.TextStyle{Bold: true}
+	ui.statusText.Alignment = fyne.TextAlignCenter
 
 	// راهنما
-	ui.hintLabel = widget.NewLabelWithStyle("برای اتصال، روی خورشید بزن", fyne.TextAlignCenter, fyne.TextStyle{Italic: true})
+	ui.hintText = canvas.NewText("برای اتصال، روی دایره بزن", colGray)
+	ui.hintText.TextSize = 14
+	ui.hintText.Alignment = fyne.TextAlignCenter
 
 	// دکمه‌ی نامرئی روی دایره
 	tapBtn := widget.NewButton("", func() { ui.toggle() })
 	tapBtn.Importance = widget.LowImportance
-	tapStack := container.NewStack(circleWrap, container.NewGridWrap(fyne.NewSize(220, 220), tapBtn))
+	tapStack := container.New(layout.NewStackLayout(), circleWrap, container.NewGridWrap(fyne.NewSize(220, 220), tapBtn))
 
-	title := widget.NewLabelWithStyle("azitavpn", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
-	title.TextSize = 28
+	title := widget.NewRichText(&widget.TextSegment{
+		Style: widget.RichTextStyle{
+			SizeName: theme.SizeNameHeadingText,
+			Alignment: fyne.TextAlignCenter,
+			TextStyle: fyne.TextStyle{Bold: true},
+		},
+		Text: "azitavpn",
+	})
 
 	content := container.NewVBox(
 		layout.NewSpacer(),
 		title,
 		widget.NewSeparator(),
 		layout.NewSpacer(),
-		tapStack,
+		container.NewCenter(tapStack),
 		layout.NewSpacer(),
-		ui.statusLabel,
-		ui.hintLabel,
+		container.NewCenter(ui.statusText),
+		container.NewCenter(ui.hintText),
 		layout.NewSpacer(),
 	)
 
@@ -105,22 +116,26 @@ func (ui *UI) setState(s appState) {
 	switch s {
 	case stateOff:
 		ui.circle.FillColor = colGray
-		ui.statusLabel.SetText("خاموش")
-		ui.hintLabel.SetText("برای اتصال، روی خورشید بزن")
+		ui.statusText.Text = "خاموش"
+		ui.statusText.Color = colFg
+		ui.hintText.Text = "برای اتصال، روی دایره بزن"
 	case stateConnecting:
 		ui.circle.FillColor = colYellow
-		ui.statusLabel.SetText("در حال اتصال...")
-		ui.hintLabel.SetText("لطفاً صبر کن")
+		ui.statusText.Text = "در حال اتصال..."
+		ui.statusText.Color = colFg
+		ui.hintText.Text = "لطفاً صبر کن"
 	case stateOn:
 		ui.circle.FillColor = colGreen
-		ui.statusLabel.SetText("متصل ✓")
-		ui.hintLabel.SetText("برای قطع، دوباره بزن")
+		ui.statusText.Text = "متصل ✓"
+		ui.statusText.Color = colGreen
+		ui.hintText.Text = "برای قطع، دوباره بزن"
 	}
 	ui.circle.Refresh()
+	ui.statusText.Refresh()
+	ui.hintText.Refresh()
 }
 
 func (ui *UI) connect() {
-	// خواندن config.json از کنار فایل اجرایی یا دایرکتوری جاری
 	cfgPath := ""
 	if exe, err := os.Executable(); err == nil {
 		p := filepath.Join(filepath.Dir(exe), "config.json")
