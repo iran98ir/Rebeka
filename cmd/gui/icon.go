@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"image"
 	"image/png"
 
 	"fyne.io/fyne/v2"
@@ -9,7 +10,7 @@ import (
 	"github.com/srwiley/rasterx"
 )
 
-// SVG خورشید لوکس — گرادیان طلایی + پس‌زمینه فیروزه‌ای
+// SVG خورشید لوکس Suppersun
 const sunSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
   <defs>
     <radialGradient id="bg" cx="50%" cy="50%" r="70%">
@@ -31,12 +32,10 @@ const sunSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" wi
     </filter>
   </defs>
 
-  <!-- پس‌زمینه -->
   <rect width="256" height="256" rx="56" fill="url(#bg)"/>
   <circle cx="128" cy="128" r="104" fill="none" stroke="#f3e6c4" stroke-width="2" opacity="0.55"/>
   <circle cx="128" cy="128" r="96"  fill="none" stroke="#3fd0c9" stroke-width="1" opacity="0.35"/>
 
-  <!-- اشعه‌ها -->
   <g filter="url(#glow)" fill="url(#ray)">
     <g transform="translate(128 128)">
       <g id="r8">
@@ -53,23 +52,21 @@ const sunSVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" wi
     </g>
   </g>
 
-  <!-- هسته -->
   <circle cx="128" cy="128" r="52" fill="url(#core)" filter="url(#glow)"/>
   <circle cx="128" cy="128" r="52" fill="none" stroke="#fff6c9" stroke-width="1.5" opacity="0.7"/>
   <ellipse cx="114" cy="112" rx="18" ry="10" fill="#ffffff" opacity="0.35"/>
 </svg>`
 
-// loadSunIcon آیکون SVG را به fyne.Resource تبدیل می‌کند (با rasterize برای سازگاری ویندوز)
+// loadSunIcon آیکون SVG را به fyne.Resource تبدیل می‌کند
 func loadSunIcon() fyne.Resource {
 	icon, err := oksvg.ReadIconStream(bytes.NewReader([]byte(sunSVG)))
 	if err != nil {
-		// fallback: resource خالی
 		return fyne.NewStaticResource("sun.svg", []byte(sunSVG))
 	}
 
 	const size = 256
 	icon.SetTarget(0, 0, size, size)
-	rgba := imageNewRGBA(size, size)
+	rgba := image.NewRGBA(image.Rect(0, 0, size, size))
 	scanner := rasterx.NewScannerGV(size, size, rgba, rgba.Bounds())
 	icon.Draw(scanner, 1.0)
 
