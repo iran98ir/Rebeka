@@ -20,7 +20,10 @@ import (
 func main() {
 	myApp := app.New()
 	myApp.Settings().SetTheme(sunTheme{})
-	myApp.SetIcon(loadSunIcon())
+
+	if icon := loadIconFromConfigDir(); icon != nil {
+		myApp.SetIcon(icon)
+	}
 
 	myWindow := myApp.NewWindow("Suppersun")
 	myWindow.Resize(fyne.NewSize(500, 520))
