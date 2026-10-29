@@ -1,4 +1,4 @@
-name: Build Suppersun GUI
+name: Build Suppersun APK
 
 on:
   workflow_dispatch:
@@ -12,8 +12,8 @@ on:
       - ".github/workflows/gui-build.yml"
 
 jobs:
-  build-gui:
-    runs-on: windows-latest
+  build-apk:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -23,13 +23,72 @@ jobs:
         with:
           go-version: '1.21'
 
-      - name: Build GUI
-        env:
-          CGO_ENABLED: 1
-        run: go build -v -o suppersun.exe -trimpath -ldflags "-s -w" ./cmd/gui
+      - name: Install fyne CLI
+        run: go install fyne.io/fyne/v2/cmd/fyne@latest
 
-      - name: Upload EXE
+      - name: Install ImageMagick
+        run: sudo apt-get update && sudo apt-get install -y imagemagick
+
+      - name: Generate icon.png from SVG
+        run: |
+          cat > /tmp/sun.svg << 'SVGEOF'
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="512" height="512">
+            <defs>
+              <radialGradient id="bg" cx="50%" cy="50%" r="70%">
+                <stop offset="0%" stop-color="#0e3b3a"/>
+                <stop offset="100%" stop-color="#072423"/>
+              </radialGradient>
+              <radialGradient id="core" cx="50%" cy="45%" r="55%">
+                <stop offset="0%" stop-color="#fff6c9"/>
+                <stop offset="45%" stop-color="#ffd447"/>
+                <stop offset="100%" stop-color="#e88b1a"/>
+              </radialGradient>
+              <linearGradient id="ray" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="#ffe27a"/>
+                <stop offset="100%" stop-color="#f2a516"/>
+              </linearGradient>
+            </defs>
+            <rect width="256" height="256" rx="56" fill="url(#bg)"/>
+            <circle cx="128" cy="128" r="104" fill="none" stroke="#f3e6c4" stroke-width="2" opacity="0.55"/>
+            <circle cx="128" cy="128" r="96" fill="none" stroke="#3fd0c9" stroke-width="1" opacity="0.35"/>
+            <g fill="url(#ray)">
+              <g transform="translate(128 128)">
+                <g id="r8">
+                  <rect x="-5" y="-108" width="10" height="30" rx="5"/>
+                </g>
+                <use href="#r8" transform="rotate(45)"/>
+                <use href="#r8" transform="rotate(90)"/>
+                <use href="#r8" transform="rotate(135)"/>
+                <use href="#r8" transform="rotate(180)"/>
+                <use href="#r8" transform="rotate(225)"/>
+                <use href="#r8" transform="rotate(270)"/>
+                <use href="#r8" transform="rotate(315)"/>
+              </g>
+            </g>
+            <circle cx="128" cy="128" r="52" fill="url(#core)"/>
+            <circle cx="128" cy="128" r="52" fill="none" stroke="#fff6c9" stroke-width="1.5" opacity="0.7"/>
+          </svg>
+          SVGEOF
+          convert -background none /tmp/sun.svg -resize 512x512 cmd/gui/icon.png
+
+      - name: Download Android NDK
+        run: |
+          wget -q https://dl.google.com/android/repository/android-ndk-r23b-linux.zip
+          unzip -q android-ndk-r23b-linux.zip
+
+      - name: Build APK
+        env:
+          ANDROID_NDK_HOME: ${{ github.workspace }}/android-ndk-r23b
+        run: |
+          cd cmd/gui
+          fyne package -os android \
+            -app-id com.suppersun.app \
+            -name Suppersun \
+            -icon icon.png
+          mv Suppersun.apk ${{ github.workspace }}/Suppersun.apk
+
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: suppersun-windows-amd64
-          path: suppersun.exe
+          name: suppersun-android
+          path: Suppersun.apk
