@@ -1,4 +1,4 @@
-// Package main is the entry point for the Bepass application.
+// Package main is the entry point for the Suppersun application.
 package main
 
 import (
@@ -20,7 +20,7 @@ import (
 var configPath string
 
 func main() {
-	fs := ff.NewFlags("Bepass")
+	fs := ff.NewFlags("Suppersun")
 	fs.StringVar(&configPath, 'c', "config", "./config.json", "Path to configuration file")
 
 	err := ff.Parse(fs, os.Args[1:])
@@ -76,6 +76,6 @@ func handleShutdown() {
 	<-c
 
 	// Perform cleanup or shutdown tasks here.
-	fmt.Println("Shutting down gracefully...")
+	fmt.Println("Suppersun shutting down gracefully...")
 	os.Exit(0)
 }
