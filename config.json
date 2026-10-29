@@ -1,7 +1,7 @@
 {
   "TLSHeaderLength": 5,
   "TLSPaddingEnabled": false,
-  "TLSPaddingSize": [
+  "TLSPaddingSize": [ 
     40,
     80
   ],
