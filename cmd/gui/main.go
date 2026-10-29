@@ -3,9 +3,10 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+
 	"github.com/bepass-org/bepass/config"
 	"github.com/bepass-org/bepass/server"
-	"io"
 
 	"fyne.io/fyne/v2"
 	"fyne.io/fyne/v2/app"
@@ -18,12 +19,19 @@ import (
 
 func main() {
 	myApp := app.New()
-	myWindow := myApp.NewWindow("Bepass GUI")
-	myWindow.Resize(fyne.NewSize(500, 500))
+	myApp.Settings().SetTheme(sunTheme{})
+	myApp.SetIcon(loadSunIcon())
+
+	myWindow := myApp.NewWindow("Suppersun")
+	myWindow.Resize(fyne.NewSize(500, 520))
 
 	ui := createUIComponents(&myWindow)
 
+	title := widget.NewLabelWithStyle("☀  Suppersun", fyne.TextAlignCenter, fyne.TextStyle{Bold: true})
+
 	content := container.NewVBox(
+		title,
+		widget.NewSeparator(),
 		ui.profile,
 		ui.dohLabel,
 		ui.dohInput,
@@ -58,6 +66,7 @@ func createUIComponents(myWindow *fyne.Window) *UIComponents {
 	ui.dohInput.SetText("https://yarp.lefolgoc.net/dns-query")
 	ui.listenInput = widget.NewEntry()
 	ui.listenInput.SetText("0.0.0.0:8085")
+
 	ui.connectButton = widget.NewButton("Connect", func() {
 		ui.ToggleConnection(myWindow)
 	})
@@ -115,7 +124,6 @@ func createUIComponents(myWindow *fyne.Window) *UIComponents {
 	ui.profile.SetSelected("Default")
 
 	ui.isConnected = false
-
 	return ui
 }
 
@@ -128,11 +136,7 @@ func (ui *UIComponents) ToggleConnection(myWindow *fyne.Window) {
 }
 
 func (ui *UIComponents) Connect(myWindow *fyne.Window) {
-
 	if ui.profile.Selected == "Default" {
-		firstValue := ui.dohInput.Text
-		secondValue := ui.listenInput.Text
-
 		ui.coreConfig = &config.Config{
 			TLSHeaderLength:       5,
 			DnsCacheTTL:           3600,
@@ -140,8 +144,8 @@ func (ui *UIComponents) Connect(myWindow *fyne.Window) {
 			WorkerIPPortAddress:   "192.168.0.1:8080",
 			WorkerEnabled:         true,
 			WorkerDNSOnly:         false,
-			RemoteDNSAddr:         firstValue,
-			BindAddress:           secondValue,
+			RemoteDNSAddr:         ui.dohInput.Text,
+			BindAddress:           ui.listenInput.Text,
 			ChunksLengthBeforeSni: [2]int{10, 20},
 			SniChunksLength:       [2]int{30, 40},
 			ChunksLengthAfterSni:  [2]int{50, 60},
@@ -176,7 +180,6 @@ func (ui *UIComponents) Disconnect(myWindow *fyne.Window) {
 	go func() {
 		if ui.coreConfig != nil {
 			err := server.ShutDown()
-
 			if err != nil {
 				dialog.ShowError(err, *myWindow)
 			}
