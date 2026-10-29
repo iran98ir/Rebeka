@@ -68,7 +68,8 @@ func loadSunIcon() fyne.Resource {
 	icon.SetTarget(0, 0, size, size)
 	rgba := image.NewRGBA(image.Rect(0, 0, size, size))
 	scanner := rasterx.NewScannerGV(size, size, rgba, rgba.Bounds())
-	icon.Draw(scanner, 1.0)
+	dasher := rasterx.NewDasher(size, size, scanner)
+	icon.Draw(dasher, 1.0)
 
 	var buf bytes.Buffer
 	if err := png.Encode(&buf, rgba); err != nil {
